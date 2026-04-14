@@ -3,3 +3,5 @@ Flask-Cors
 python-dotenv
 requests
 opencv-python-headless
+SQLAlchemy
+psycopg2-binary

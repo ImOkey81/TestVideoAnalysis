@@ -1,88 +1,111 @@
-### Запуск
-````
+# TestVideoAnalysis
+
+Flask-сервис для загрузки `mp4`-видео, извлечения кадров, генерации Gherkin через Mistral и сохранения jobs/results/artifacts/logs в PostgreSQL. Видео и preview frames сохраняются локально в `storage/`.
+
+По умолчанию backend слушает `5000`, потому что PostgreSQL в этом задании использует `localhost:8080`.
+
+## Запуск
+
+Локально:
+
+```bash
+pip install -r requirements.txt
+python AnalisesAI.py
+```
+
+Docker:
+
+```bash
 docker-compose up --build
-````
+```
 
-### Пример запроса к API
+## Конфиг
 
-````
-curl -X POST http://localhost:8080//upload-video-base64 \
-     {
-    "video_base64": "AAAAIGZ0eXBtcDQyAAAAAG1wNDJtcDQxaXNvbWlzbzIAAAAIZnJlZQAf7OdtZGF0AAAAEGdCwDOMjUAZAGv80A8IhGoAAAAEaM48gAAACshluAAEAABRMUAAQ5JNScnJycnJycnJycnJycnJycnJycnJycnJycnJycnJycnJycnJycn..."}
-curl -X GET http://localhost:8080/get-test-cases
+Обязательная переменная:
 
-````
-### Пример ответа
+- `MISTRAL_API_KEY`
 
-````
-Gherkin
+PostgreSQL defaults:
 
-Feature: Navigation Menu Functionality
+- `POSTGRES_HOST=localhost`
+- `POSTGRES_PORT=8080`
+- `POSTGRES_DB=test_platform`
+- `POSTGRES_USER=postgres`
+- `POSTGRES_PASSWORD=postgres`
 
-Scenario: Verify Navigation Menu Links
-  Given The user is on the homepage
-  When The user hovers over each navigation menu item
-  Then Each navigation menu item should display a valid URL in the tooltip
+Опционально:
 
-Feature: Form Functionality
+- `DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:8080/test_platform`
+- `APP_PORT=5000`
+- `MAX_FRAMES=3`
+- `FRAME_WIDTH=640`
+- `JPEG_QUALITY=80`
+- `MAX_VIDEO_SIZE_MB=100`
+- `MISTRAL_TIMEOUT=90`
 
-Scenario: Verify Contact Form Submission
-  Given The user is on the contact page
-  When The user fills out the form with valid information and clicks submit
-  Then The form should successfully submit and display a success message
-  And The user should receive an email with the submitted information
+Готовая SQL-схема лежит в [schema.sql](/C:/Users/artem/OneDrive/Desktop/TestVideoAnalysis/schema.sql).
 
-Feature: Text Block Functionality
+## API
 
-Scenario: Verify Text Block Content
-  Given The user is on the homepage
-  When The user reads the text block
-  Then The text block should contain the correct information
+### `GET /health`
 
-Feature: Interactive Elements Functionality
+```json
+{
+  "status": "UP",
+  "service": "video-analysis"
+}
+```
 
-Scenario: Verify Slider Functionality
-  Given The user is on the homepage
-  When The user interacts with the slider
-  Then The slider should change images smoothly and the navigation buttons should work correctly
+### `POST /upload-video`
 
-Scenario: Verify Accordion Functionality
-  Given The user is on the FAQ page
-  When The user clicks on an accordion item
-  Then The accordion item should expand or collapse correctly and display the correct content
+`multipart/form-data`, поле строго `video`.
 
-Scenario: Verify Modal Functionality
-  Given The user is on the homepage
-  When The user clicks on a call-to-action button that opens a modal
-  Then The modal should open correctly and contain the correct information
-  And The user should be able to close the modal by clicking on the close button
+Ограничения:
 
-Feature: Accessibility
+- только `video/mp4`
+- размер ограничен через `MAX_VIDEO_SIZE_MB`
 
-Scenario: Verify Keyboard Navigation
-  Given The user is on the homepage
-  When The user navigates the page using only the keyboard
-  Then The user should be able to navigate through all interactive elements and focus should be properly managed
+Ответ сохранён совместимым:
 
-Scenario: Verify Screen Reader Compatibility
-  Given The user is using a screen reader on the homepage
-  When The user navigates the page using the screen reader
-  Then The screen reader should correctly read out all text and interactive elements and their labels
+```json
+{
+  "status": "success",
+  "frames_extracted": 3,
+  "gherkin": "Feature: ..."
+}
+```
 
-Scenario: Verify Color Contrast
-  Given The user is on the homepage
-  When The user views the page with different color contrast settings
-  Then The text should be easily readable against the background and meet WCAG 2.0 AA standards for color contrast
+Во время обработки сервис:
 
-Scenario: Verify Alt Text for Images
-  Given The user is on the homepage
-  When The user views the page with images turned off or using a screen reader
-  Then The alt text for all images should accurately describe the image and meet WCAG 2.0 AA standards for accessibility
+- создаёт `Job`, `JobInput`, `JobResult`
+- сохраняет исходное видео в `storage/videos/`
+- сохраняет extracted frames в `storage/frames/`
+- пишет `Artifact` и `JobLog`
 
-Feature: Responsiveness
+### `GET /jobs`
 
-Scenario: Verify Responsiveness on Different Devices
-  Given The user is accessing the site on a desktop, tablet, and mobile device
-  When The user views the site on each device
-  Then The site should display correctly and all elements should be easily accessible and usable on each device
-````
+Поддерживает фильтры `service_type`, `status`, `limit`, `offset`.
+
+### `GET /jobs/<job_id>`
+
+Возвращает metadata job из PostgreSQL.
+
+### `GET /jobs/<job_id>/result`
+
+Возвращает `gherkin_text`, `result_json` и статус.
+
+### `GET /jobs/<job_id>/artifacts`
+
+Возвращает список сохранённых artifacts.
+
+### `GET /jobs/<job_id>/status`
+
+Оставлен для совместимости со старым клиентом.
+
+### `GET /jobs/<job_id>/feature`
+
+Скачивает Gherkin-результат как `.feature`.
+
+### `GET /get-test-cases`
+
+Оставлен для совместимости и берёт последний успешный результат из PostgreSQL.
