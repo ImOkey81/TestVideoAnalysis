@@ -20,6 +20,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 
+from auth import require_auth
+
 load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
@@ -647,6 +649,7 @@ def health():
 
 
 @app.route("/upload-video", methods=["POST"])
+@require_auth
 def upload_video():
     if "video" not in request.files:
         return json_error("File field must be named 'video'", "missing_video_field", 400)
@@ -654,6 +657,7 @@ def upload_video():
 
 
 @app.route("/jobs/<job_id>", methods=["GET"])
+@require_auth
 def get_job(job_id: str):
     session = get_session()
     try:
@@ -667,6 +671,7 @@ def get_job(job_id: str):
 
 
 @app.route("/jobs/<job_id>/status", methods=["GET"])
+@require_auth
 def get_job_status(job_id: str):
     session = get_session()
     try:
@@ -697,6 +702,7 @@ def get_job_status(job_id: str):
 
 
 @app.route("/jobs/<job_id>/result", methods=["GET"])
+@require_auth
 def get_job_result(job_id: str):
     session = get_session()
     try:
@@ -714,6 +720,7 @@ def get_job_result(job_id: str):
 
 
 @app.route("/jobs/<job_id>/artifacts", methods=["GET"])
+@require_auth
 def get_job_artifacts(job_id: str):
     session = get_session()
     try:
@@ -727,6 +734,7 @@ def get_job_artifacts(job_id: str):
 
 
 @app.route("/jobs", methods=["GET"])
+@require_auth
 def list_jobs():
     session = get_session()
     try:
@@ -750,6 +758,7 @@ def list_jobs():
 
 
 @app.route("/get-test-cases", methods=["GET"])
+@require_auth
 def get_test_cases():
     session = get_session()
     try:
@@ -763,6 +772,7 @@ def get_test_cases():
 
 
 @app.route("/jobs/<job_id>/feature", methods=["GET"])
+@require_auth
 def download_feature(job_id: str):
     session = get_session()
     try:

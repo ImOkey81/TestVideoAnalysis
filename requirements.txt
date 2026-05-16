@@ -1,7 +1,9 @@
 Flask
 Flask-Cors
 python-dotenv
-requests
+requests==2.31.0
 opencv-python-headless
 SQLAlchemy
 psycopg2-binary
+PyJWT[crypto]==2.8.0
+cryptography==42.0.5
